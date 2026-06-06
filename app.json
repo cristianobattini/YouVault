@@ -8,7 +8,11 @@
     "scheme": "youvault",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "supportsTablet": true,
+      "bundleIdentifier": "com.cristiano.youvault",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "YouVault uses Face ID to protect your credentials."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -17,7 +21,7 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "package": "com.cristiano.youvault"
     },
     "web": {
       "output": "static",
@@ -34,7 +38,15 @@
             "imageWidth": 76
           }
         }
-      ]
+      ],
+      "expo-local-authentication",
+      "expo-secure-store",
+      "expo-sharing",
+      "expo-asset",
+      "expo-document-picker",
+      "expo-font",
+      "expo-web-browser",
+      "expo-status-bar"
     ],
     "experiments": {
       "typedRoutes": true,
