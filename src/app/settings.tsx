@@ -1,335 +1,297 @@
-import React, { useEffect, useState } from 'react';
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  TextInput,
-  TouchableOpacity,
-  View,
-  ActivityIndicator,
-} from 'react-native';
-import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { accent } from '@/constants/Colors';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import { BiometricService } from '@/services/biometricService';
+import RealmDataService from '@/services/realmDataService';
 import { Octicons } from '@expo/vector-icons';
-import { useNavigation } from 'expo-router';
 import { useRealm } from '@realm/react';
 import { getDocumentAsync } from 'expo-document-picker';
+import { useNavigation } from 'expo-router';
 import * as Sharing from 'expo-sharing';
-import RealmDataService from '@/services/realmDataService';
-import { BiometricService } from '@/services/biometricService';
+import { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 
 const Settings = () => {
     const navigation = useNavigation();
     const realm = useRealm();
-    const iconColor = useThemeColor({ light: '#11181C', dark: '#ECEDEE' }, 'text');
 
-    // ── Biometric ──────────────────────────────────────────────────────────────
+    const iconColor = useThemeColor({ light: '#1C1C1E', dark: '#FFFFFF' }, 'text');
+    const subtextColor = useThemeColor({ light: '#8E8E93', dark: '#6E6E78' }, 'subtext');
+    const surface = useThemeColor({ light: '#FFFFFF', dark: '#1A1A24' }, 'surface');
+    const border = useThemeColor({ light: '#E5E5EA', dark: '#2A2A38' }, 'border');
+    const inputBg = useThemeColor({ light: '#F2F2F7', dark: '#0F0F14' }, 'background');
+
+    // Biometric
     const [biometricSupported, setBiometricSupported] = useState(false);
     const [biometricEnabled, setBiometricEnabled] = useState(false);
 
     useEffect(() => {
-        const loadBiometricState = async () => {
+        const load = async () => {
             const supported = await BiometricService.isSupported();
             const enabled = await BiometricService.isEnabled();
             setBiometricSupported(supported);
             setBiometricEnabled(enabled);
         };
-        loadBiometricState();
+        load();
     }, []);
 
     const handleBiometricToggle = async (value: boolean) => {
         if (value) {
-            const success = await BiometricService.authenticate();
-            if (!success) {
-                Alert.alert('Authentication Failed', 'Could not enable biometric lock.');
-                return;
-            }
+            const ok = await BiometricService.authenticate();
+            if (!ok) { Alert.alert('Authentication Failed', 'Could not enable biometric lock.'); return; }
         }
         await BiometricService.setEnabled(value);
         setBiometricEnabled(value);
     };
 
-    // ── Export ─────────────────────────────────────────────────────────────────
+    // Export
     const [exportFileName, setExportFileName] = useState('');
     const [exportPassword, setExportPassword] = useState('');
     const [exportConfirm, setExportConfirm] = useState('');
     const [isExporting, setIsExporting] = useState(false);
 
     const handleExport = async () => {
-        if (!exportPassword) {
-            Alert.alert('Error', 'Please enter an encryption password.');
-            return;
-        }
-        if (exportPassword !== exportConfirm) {
-            Alert.alert('Error', 'Passwords do not match.');
-            return;
-        }
-        if (exportPassword.length < 8) {
-            Alert.alert('Weak Password', 'Please use at least 8 characters for better protection.');
-            return;
-        }
-
+        if (!exportPassword) { Alert.alert('Error', 'Please enter an encryption password.'); return; }
+        if (exportPassword !== exportConfirm) { Alert.alert('Error', 'Passwords do not match.'); return; }
+        if (exportPassword.length < 8) { Alert.alert('Weak Password', 'Use at least 8 characters.'); return; }
         setIsExporting(true);
         try {
             const fileUri = await RealmDataService.exportData(realm, exportPassword, exportFileName || undefined);
-
             if (await Sharing.isAvailableAsync()) {
-                await Sharing.shareAsync(fileUri, {
-                    dialogTitle: 'Share Encrypted Backup',
-                    mimeType:   'application/octet-stream',
-                    UTI:        'public.data',
-                });
+                await Sharing.shareAsync(fileUri, { dialogTitle: 'Share Encrypted Backup', mimeType: 'application/octet-stream', UTI: 'public.data' });
             } else {
                 Alert.alert('Export Complete', `File saved to:\n${fileUri}`);
             }
-        } catch (error) {
+        } catch {
             Alert.alert('Export Failed', 'An error occurred during export.');
-            console.error(error);
         } finally {
             setIsExporting(false);
         }
     };
 
-    // ── Import ─────────────────────────────────────────────────────────────────
+    // Import
     const [importPassword, setImportPassword] = useState('');
     const [isImporting, setIsImporting] = useState(false);
 
     const handleImport = async () => {
-        if (!importPassword) {
-            Alert.alert('Error', 'Please enter the backup password.');
-            return;
-        }
-
+        if (!importPassword) { Alert.alert('Error', 'Please enter the backup password.'); return; }
         try {
-            const result = await getDocumentAsync({
-                type:               '*/*',
-                copyToCacheDirectory: true,
-                multiple:           false,
-            });
-
+            const result = await getDocumentAsync({ type: '*/*', copyToCacheDirectory: true, multiple: false });
             if (result.canceled) return;
-
             if (result.assets?.length > 0) {
                 setIsImporting(true);
                 try {
                     await RealmDataService.importData(realm, result.assets[0].uri, importPassword);
                     Alert.alert('Import Complete', 'Credentials imported successfully.');
                     setImportPassword('');
-                } catch (error: any) {
-                    Alert.alert('Import Failed', error?.message ?? 'Wrong password or corrupted file.');
+                } catch (e: any) {
+                    Alert.alert('Import Failed', e?.message ?? 'Wrong password or corrupted file.');
                 } finally {
                     setIsImporting(false);
                 }
             }
-        } catch (error) {
-            console.error('Document picker error:', error);
+        } catch {
             Alert.alert('Error', 'Failed to open file picker.');
         }
     };
 
+    const inputStyle = [styles.input, { backgroundColor: inputBg, color: iconColor, borderColor: border }];
+
     return (
         <ThemedView style={styles.container}>
             <View style={styles.header}>
-                <View style={{ flexDirection: 'row', gap: 20, alignItems: 'center' }}>
-                    <TouchableOpacity onPress={() => navigation.goBack()}>
-                        <Octicons size={28} name='chevron-left' color={iconColor} />
-                    </TouchableOpacity>
-                    <ThemedText type='title'>Settings</ThemedText>
-                </View>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                    <Octicons size={22} name="chevron-left" color={iconColor} />
+                </TouchableOpacity>
+                <Text style={[styles.headerTitle, { color: iconColor }]}>Settings</Text>
             </View>
 
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={{ flex: 1 }}
-            >
-        <ScrollView style={styles.contentContainer} contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+                <ScrollView
+                    style={styles.scroll}
+                    contentContainerStyle={styles.scrollContent}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                >
 
-                {/* ── Security ──────────────────────────────────────────── */}
-                <View style={styles.section}>
-                    <ThemedText style={styles.sectionTitle}>Security</ThemedText>
-
-                    <View style={styles.row}>
-                        <View style={styles.rowLabel}>
-                            <ThemedText>Biometric Lock</ThemedText>
-                            {!biometricSupported && (
-                                <ThemedText style={styles.rowHint}>
-                                    Not available on this device
-                                </ThemedText>
-                            )}
+                    {/* Security */}
+                    <Text style={[styles.sectionHeader, { color: subtextColor }]}>Security</Text>
+                    <View style={[styles.card, { backgroundColor: surface, borderColor: border }]}>
+                        <View style={styles.row}>
+                            <View style={styles.rowLeft}>
+                                <View style={[styles.rowIcon, { backgroundColor: accent + '20' }]}>
+                                    <Octicons name="shield-lock" size={16} color={accent} />
+                                </View>
+                                <View>
+                                    <Text style={[styles.rowLabel, { color: iconColor }]}>Biometric Lock</Text>
+                                    {!biometricSupported && (
+                                        <Text style={[styles.rowHint, { color: subtextColor }]}>Not available on this device</Text>
+                                    )}
+                                </View>
+                            </View>
+                            <Switch
+                                value={biometricEnabled}
+                                onValueChange={handleBiometricToggle}
+                                disabled={!biometricSupported}
+                                trackColor={{ true: accent }}
+                            />
                         </View>
-                        <Switch
-                            value={biometricEnabled}
-                            onValueChange={handleBiometricToggle}
-                            disabled={!biometricSupported}
-                        />
                     </View>
-                </View>
 
-                {/* ── Export Backup ─────────────────────────────────────── */}
-                <View style={styles.section}>
-                    <ThemedText style={styles.sectionTitle}>Export Backup</ThemedText>
-                    <ThemedText style={styles.sectionHint}>
-                        Creates an AES-256 encrypted .mvault file you can share or store safely.
-                    </ThemedText>
+                    {/* Export */}
+                    <Text style={[styles.sectionHeader, { color: subtextColor }]}>Export Backup</Text>
+                    <View style={[styles.card, { backgroundColor: surface, borderColor: border }]}>
+                        <Text style={[styles.cardHint, { color: subtextColor }]}>
+                            Creates an AES-256 encrypted .mvault file you can share or store safely.
+                        </Text>
 
-                    <ThemedText style={styles.label}>File name (optional)</ThemedText>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="e.g. my-vault-backup"
-                        value={exportFileName}
-                        onChangeText={setExportFileName}
-                        autoCapitalize="none"
-                    />
+                        <Text style={[styles.fieldLabel, { color: subtextColor }]}>File name (optional)</Text>
+                        <TextInput
+                            style={inputStyle}
+                            placeholder="e.g. my-vault-backup"
+                            placeholderTextColor={subtextColor}
+                            value={exportFileName}
+                            onChangeText={setExportFileName}
+                            autoCapitalize="none"
+                        />
 
-                    <ThemedText style={styles.label}>Encryption password</ThemedText>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Min. 8 characters"
-                        secureTextEntry
-                        value={exportPassword}
-                        onChangeText={setExportPassword}
-                    />
+                        <Text style={[styles.fieldLabel, { color: subtextColor }]}>Encryption password</Text>
+                        <TextInput
+                            style={inputStyle}
+                            placeholder="Min. 8 characters"
+                            placeholderTextColor={subtextColor}
+                            secureTextEntry
+                            value={exportPassword}
+                            onChangeText={setExportPassword}
+                        />
 
-                    <ThemedText style={styles.label}>Confirm password</ThemedText>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Repeat password"
-                        secureTextEntry
-                        value={exportConfirm}
-                        onChangeText={setExportConfirm}
-                    />
+                        <Text style={[styles.fieldLabel, { color: subtextColor }]}>Confirm password</Text>
+                        <TextInput
+                            style={inputStyle}
+                            placeholder="Repeat password"
+                            placeholderTextColor={subtextColor}
+                            secureTextEntry
+                            value={exportConfirm}
+                            onChangeText={setExportConfirm}
+                        />
 
-                    {isExporting ? (
-                        <View style={styles.progressRow}>
-                            <ActivityIndicator size="small" />
-                            <ThemedText style={styles.progressText}>
-                                Deriving key — this may take a moment…
-                            </ThemedText>
-                        </View>
-                    ) : (
-                        <TouchableOpacity style={styles.button} onPress={handleExport}>
-                            <ThemedText style={styles.buttonText}>Export</ThemedText>
-                        </TouchableOpacity>
-                    )}
-                </View>
+                        {isExporting ? (
+                            <View style={styles.progressRow}>
+                                <ActivityIndicator size="small" color={accent} />
+                                <Text style={[styles.progressText, { color: subtextColor }]}>Deriving key…</Text>
+                            </View>
+                        ) : (
+                            <TouchableOpacity style={[styles.btn, { backgroundColor: accent }]} onPress={handleExport}>
+                                <Octicons name="upload" size={16} color="#fff" />
+                                <Text style={styles.btnText}>Export</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
 
-                {/* ── Import Backup ─────────────────────────────────────── */}
-                <View style={styles.section}>
-                    <ThemedText style={styles.sectionTitle}>Import Backup</ThemedText>
-                    <ThemedText style={styles.sectionHint}>
-                        Restores credentials from a .mvault file. Existing data is kept.
-                    </ThemedText>
+                    {/* Import */}
+                    <Text style={[styles.sectionHeader, { color: subtextColor }]}>Import Backup</Text>
+                    <View style={[styles.card, { backgroundColor: surface, borderColor: border }]}>
+                        <Text style={[styles.cardHint, { color: subtextColor }]}>
+                            Restores credentials from a .mvault file. Existing data is kept.
+                        </Text>
 
-                    <ThemedText style={styles.label}>Backup password</ThemedText>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Password used when exporting"
-                        secureTextEntry
-                        value={importPassword}
-                        onChangeText={setImportPassword}
-                    />
+                        <Text style={[styles.fieldLabel, { color: subtextColor }]}>Backup password</Text>
+                        <TextInput
+                            style={inputStyle}
+                            placeholder="Password used when exporting"
+                            placeholderTextColor={subtextColor}
+                            secureTextEntry
+                            value={importPassword}
+                            onChangeText={setImportPassword}
+                        />
 
-                    {isImporting ? (
-                        <View style={styles.progressRow}>
-                            <ActivityIndicator size="small" />
-                            <ThemedText style={styles.progressText}>
-                                Verifying and decrypting…
-                            </ThemedText>
-                        </View>
-                    ) : (
-                        <TouchableOpacity style={styles.button} onPress={handleImport}>
-                            <ThemedText style={styles.buttonText}>Choose File & Import</ThemedText>
-                        </TouchableOpacity>
-                    )}
-                </View>
+                        {isImporting ? (
+                            <View style={styles.progressRow}>
+                                <ActivityIndicator size="small" color={accent} />
+                                <Text style={[styles.progressText, { color: subtextColor }]}>Verifying and decrypting…</Text>
+                            </View>
+                        ) : (
+                            <TouchableOpacity style={[styles.btn, { backgroundColor: '#10B981' }]} onPress={handleImport}>
+                                <Octicons name="download" size={16} color="#fff" />
+                                <Text style={styles.btnText}>Choose File & Import</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
 
-            </ScrollView>
+                </ScrollView>
             </KeyboardAvoidingView>
         </ThemedView>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    header: {
-        paddingVertical: 12,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    contentContainer: {
-        flex: 1,
-        padding: 20,
-    },
-    section: {
-        marginBottom: 24,
-        borderRadius: 10,
-        padding: 15,
-        borderWidth: 1,
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
+    container: { flex: 1 },
+
+    header: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6, marginBottom: 4 },
+    backBtn: { padding: 6 },
+    headerTitle: { fontSize: 22, fontWeight: '700', letterSpacing: -0.5 },
+
+    scroll: { flex: 1 },
+    scrollContent: { paddingBottom: 60, gap: 6 },
+
+    sectionHeader: {
+        fontSize: 12,
+        fontWeight: '600',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginTop: 16,
         marginBottom: 6,
+        paddingHorizontal: 4,
     },
-    sectionHint: {
-        fontSize: 12,
-        opacity: 0.55,
-        marginBottom: 14,
-    },
-    label: {
-        marginBottom: 5,
-    },
-    input: {
-        height: 40,
+
+    card: {
+        borderRadius: 16,
         borderWidth: 1,
-        borderRadius: 5,
-        padding: 10,
-        marginBottom: 15,
-    },
-    button: {
-        marginTop: 4,
-        padding: 15,
-        borderRadius: 5,
-        alignItems: 'center',
-        backgroundColor: '#007AFF',
-    },
-    buttonText: {
-        color: 'white',
-        fontWeight: 'bold',
-    },
-    row: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingVertical: 8,
-    },
-    rowLabel: {
-        flex: 1,
-        marginRight: 12,
-    },
-    rowHint: {
-        fontSize: 12,
-        opacity: 0.5,
-        marginTop: 2,
-    },
-    progressRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
+        padding: 16,
         gap: 10,
-        marginTop: 10,
+    },
+    cardHint: { fontSize: 13, lineHeight: 18 },
+
+    row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    rowLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    rowIcon: { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+    rowLabel: { fontSize: 15, fontWeight: '500' },
+    rowHint: { fontSize: 12, marginTop: 2 },
+
+    fieldLabel: { fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: -4 },
+    input: {
+        height: 44,
+        borderWidth: 1,
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        fontSize: 15,
+    },
+
+    btn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
         paddingVertical: 14,
+        borderRadius: 12,
+        marginTop: 4,
     },
-    progressText: {
-        fontSize: 13,
-        opacity: 0.7,
-    },
+    btnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+
+    progressRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 },
+    progressText: { fontSize: 13 },
 });
 
 export default Settings;

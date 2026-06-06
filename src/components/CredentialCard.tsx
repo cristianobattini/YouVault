@@ -1,132 +1,117 @@
-import React, { useState } from 'react';
-import { View, Image, StyleSheet, TouchableOpacity } from 'react-native';
-import { ThemedText } from './ThemedText';
-import { Credential } from '@/models/Credential';
-import { useRealm } from '@realm/react';
-import { Octicons } from '@expo/vector-icons';
-import Swipeable from 'react-native-gesture-handler/Swipeable';
-import { RectButton } from 'react-native-gesture-handler';
 import { useThemeColor } from '@/hooks/useThemeColor';
+import { Credential } from '@/models/Credential';
+import { Octicons } from '@expo/vector-icons';
+import { useRealm } from '@realm/react';
 import { Link } from 'expo-router';
+import { useState } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { RectButton } from 'react-native-gesture-handler';
+import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { Button, Dialog, Portal } from 'react-native-paper';
+
+const AVATAR_PALETTE = ['#015aea', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#F97316'];
+
+function avatarColor(title: string): string {
+    return AVATAR_PALETTE[title.charCodeAt(0) % AVATAR_PALETTE.length];
+}
 
 const CredentialCard = ({ item }: { item: Credential }) => {
     const realm = useRealm();
-    const [credentialDelete, setCredentialDelete] = useState<boolean>(false);
+    const [credentialDelete, setCredentialDelete] = useState(false);
     const [isDeleted, setIsDeleted] = useState(false);
 
-    const cardBackgroundColor = useThemeColor({ light: '#fff', dark: '#000' }, 'text');
+    const surface = useThemeColor({ light: '#FFFFFF', dark: '#1A1A24' }, 'surface');
+    const textPrimary = useThemeColor({ light: '#1C1C1E', dark: '#FFFFFF' }, 'text');
+    const textSecondary = useThemeColor({ light: '#8E8E93', dark: '#6E6E78' }, 'subtext');
+    const border = useThemeColor({ light: '#F0F0F5', dark: '#2A2A38' }, 'border');
+
+    const tagColor = item.tags.length > 0 ? item.tags[0].colorHex : avatarColor(item.title || '?');
 
     const toggleFavorite = () => {
         if (isDeleted) return;
-
         realm.write(() => {
-            const credential = realm.objectForPrimaryKey<Credential>('Credential', item._id);
-            if (credential) {
-                credential.isFavorite = !credential.isFavorite;
-            }
+            const c = realm.objectForPrimaryKey<Credential>('Credential', item._id);
+            if (c) c.isFavorite = !c.isFavorite;
         });
     };
 
     const toggleArchived = () => {
         if (isDeleted) return;
-
         realm.write(() => {
-            const credential = realm.objectForPrimaryKey<Credential>('Credential', item._id);
-            if (credential) {
-                credential.isArchived = !credential.isArchived;
-            }
+            const c = realm.objectForPrimaryKey<Credential>('Credential', item._id);
+            if (c) c.isArchived = !c.isArchived;
         });
     };
 
-    const handleDeleteCredential = () => {
+    const handleDelete = () => {
         realm.write(() => {
-            const credential = realm.objectForPrimaryKey<Credential>('Credential', item._id);
-            if (credential) {
-                realm.delete(credential);
+            const c = realm.objectForPrimaryKey<Credential>('Credential', item._id);
+            if (c) {
+                realm.delete(c);
                 setIsDeleted(true);
             }
         });
         setCredentialDelete(false);
     };
 
-    const renderLeftActions = () => {
-        return (
-            <RectButton
-                style={styles.deleteButton}
-                onPress={() => setCredentialDelete(true)}
-            >
-                <View style={styles.actionContent}>
-                    <Octicons name='trash' size={24} color={'white'} />
-                </View>
-            </RectButton>
-        );
-    };
-
-    const renderRightActions = () => {
-        return (
-            <RectButton
-                style={styles.archiveButton}
-                onPress={toggleArchived}
-            >
-                <View style={styles.actionContent}>
-                    <Octicons name='archive' size={24} color={'white'} />
-                </View>
-            </RectButton>
-        );
-    };
-
-    if (isDeleted) {
-        return null;
-    }
+    if (isDeleted) return null;
 
     return (
         <>
             <Swipeable
-                renderLeftActions={renderLeftActions}
-                renderRightActions={renderRightActions}
-                leftThreshold={30}
-                rightThreshold={30}
+                renderLeftActions={() => (
+                    <RectButton style={styles.swipeDelete} onPress={() => setCredentialDelete(true)}>
+                        <Octicons name="trash" size={22} color="#fff" />
+                    </RectButton>
+                )}
+                renderRightActions={() => (
+                    <RectButton style={styles.swipeArchive} onPress={toggleArchived}>
+                        <Octicons name="archive" size={22} color="#fff" />
+                    </RectButton>
+                )}
+                leftThreshold={40}
+                rightThreshold={40}
             >
-                <View style={[styles.card, { backgroundColor: cardBackgroundColor }]}>
-                    <Link href={{
-                        pathname: "/credential-detail",
-                        params: { id: item._id.toString() }
-                    }}>
-                        <View style={styles.leftContent}>
-                            <Image
-                                source={require('@/assets/images/key.png')}
-                                style={styles.keyImage}
-                            />
-                            <View style={styles.textContainer}>
-                                <ThemedText type='subtitle'>{item.title}</ThemedText>
-                                <ThemedText type='default'>{item.username}</ThemedText>
+                <Link href={{ pathname: '/credential-detail', params: { id: item._id.toString() } }} asChild>
+                    <TouchableOpacity activeOpacity={0.7}>
+                        <View style={[styles.card, { backgroundColor: surface, borderColor: border }]}>
+                            <View style={[styles.avatar, { backgroundColor: tagColor + '22' }]}>
+                                <Text style={[styles.avatarLetter, { color: tagColor }]}>
+                                    {(item.title[0] || '?').toUpperCase()}
+                                </Text>
                             </View>
+
+                            <View style={styles.info}>
+                                <Text style={[styles.title, { color: textPrimary }]} numberOfLines={1}>
+                                    {item.title}
+                                </Text>
+                                <Text style={[styles.username, { color: textSecondary }]} numberOfLines={1}>
+                                    {item.username}
+                                </Text>
+                            </View>
+
+                            <TouchableOpacity onPress={toggleFavorite} hitSlop={8} style={styles.starButton}>
+                                <Octicons
+                                    name={item.isFavorite ? 'star-fill' : 'star'}
+                                    size={20}
+                                    color={item.isFavorite ? '#F59E0B' : textSecondary}
+                                />
+                            </TouchableOpacity>
                         </View>
-                    </Link>
-                    <TouchableOpacity onPress={toggleFavorite}>
-                        <Octicons name={item.isFavorite ? 'star-fill' : 'star'} color={'orange'} size={26} />
                     </TouchableOpacity>
-                </View>
+                </Link>
             </Swipeable>
 
             <Portal>
-                <Dialog
-                    visible={credentialDelete}
-                    onDismiss={() => setCredentialDelete(false)}
-                >
-                    <Dialog.Content><ThemedText type='subtitle'>Delete credential?</ThemedText></Dialog.Content>
+                <Dialog visible={credentialDelete} onDismiss={() => setCredentialDelete(false)}>
+                    <Dialog.Content>
+                        <Text style={{ fontSize: 17, fontWeight: '600' }}>Delete "{item.title}"?</Text>
+                        <Text style={{ marginTop: 6, color: '#8E8E93' }}>This action cannot be undone.</Text>
+                    </Dialog.Content>
                     <Dialog.Actions>
-                        <Button
-                            buttonColor='red'
-                            style={{ borderRadius: 10 }}
-                            textColor='white'
-                            onPress={handleDeleteCredential}
-                        >
+                        <Button onPress={() => setCredentialDelete(false)}>Cancel</Button>
+                        <Button buttonColor="#EF4444" textColor="#fff" style={{ borderRadius: 8 }} onPress={handleDelete}>
                             Delete
-                        </Button>
-                        <Button onPress={() => setCredentialDelete(false)}>
-                            Cancel
                         </Button>
                     </Dialog.Actions>
                 </Dialog>
@@ -139,45 +124,54 @@ const styles = StyleSheet.create({
     card: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        borderRadius: 8,
-        padding: 10,
-        marginBottom: 2,
+        borderRadius: 14,
+        padding: 14,
+        marginBottom: 8,
+        borderWidth: 1,
     },
-    leftContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-    },
-    textContainer: {
-        gap: 10,
-        flexDirection: 'row'
-    },
-    keyImage: {
-        width: 24,
-        height: 24,
-    },
-    deleteButton: {
-        backgroundColor: 'red',
-        justifyContent: 'center',
-        alignItems: 'flex-end',
-        borderRadius: 8,
-        marginBottom: 2,
-        width: 70,
-    },
-    archiveButton: {
-        backgroundColor: 'orange',
-        justifyContent: 'center',
-        alignItems: 'flex-start',
-        borderRadius: 8,
-        marginBottom: 2,
-        width: 70,
-    },
-    actionContent: {
-        width: '100%',
-        height: '100%',
+    avatar: {
+        width: 44,
+        height: 44,
+        borderRadius: 13,
         justifyContent: 'center',
         alignItems: 'center',
+        marginRight: 12,
+        flexShrink: 0,
+    },
+    avatarLetter: {
+        fontSize: 18,
+        fontWeight: '700',
+    },
+    info: {
+        flex: 1,
+        gap: 3,
+    },
+    title: {
+        fontSize: 15,
+        fontWeight: '600',
+        letterSpacing: -0.2,
+    },
+    username: {
+        fontSize: 13,
+    },
+    starButton: {
+        paddingLeft: 8,
+    },
+    swipeDelete: {
+        backgroundColor: '#EF4444',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: 14,
+        marginBottom: 8,
+        width: 70,
+    },
+    swipeArchive: {
+        backgroundColor: '#F59E0B',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: 14,
+        marginBottom: 8,
+        width: 70,
     },
 });
 
