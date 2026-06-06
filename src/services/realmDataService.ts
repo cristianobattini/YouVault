@@ -66,7 +66,7 @@ function realmObjectToPlain(obj: any): any {
       plain[prop] = obj[prop].toHexString();
     } else if (obj[prop] instanceof Date) {
       plain[prop] = obj[prop].toISOString();
-    } else if (schema[prop].type === 'list') {
+    } else if (schema[prop].type === 'list' || schema[prop].type === 'linkingObjects') {
       plain[prop] = Array.from(obj[prop]).map((item: any) => item._id.toHexString());
     } else {
       plain[prop] = obj[prop];

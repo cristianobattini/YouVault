@@ -138,7 +138,7 @@ const Settings = () => {
                 </View>
             </View>
 
-            <ScrollView style={styles.contentContainer} contentContainerStyle={{ paddingBottom: 40 }}>
+            <ScrollView style={styles.contentContainer} contentContainerStyle={{ paddingBottom: 0 }}>
 
                 {/* ── Security ──────────────────────────────────────────── */}
                 <View style={styles.section}>
