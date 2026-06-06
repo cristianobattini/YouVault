@@ -20,7 +20,11 @@
         "backgroundColor": "#208AEF",
         "foregroundImage": "./assets/images/android-icon-foreground.png"
       },
-      "package": "com.cristiano.youvault"
+      "package": "com.cristiano.youvault",
+      "permissions": [
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ]
     },
     "web": {
       "output": "static",
@@ -51,6 +55,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "4263f932-d6e4-47c9-a45e-662cdcfbca53"
+      }
+    },
+    "owner": "crisbatti270"
   }
 }
