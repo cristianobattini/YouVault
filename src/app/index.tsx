@@ -10,7 +10,6 @@ import CredentialCard from '@/components/CredentialCard';
 import BottomSheet from '@/components/BottomSheet';
 import Input from '@/components/Input';
 import { useForm, Controller } from 'react-hook-form';
-import { KeyboardAvoidingProvider } from '@/components/store/KeyboardAvoidingProvider';
 import { BSON } from 'realm';
 import ColorPicker from '@/components/ColorPickers';
 import { Octicons } from '@expo/vector-icons';
@@ -40,6 +39,7 @@ const Index = () => {
     const modalAnim = useState(new Animated.Value(0))[0];
     const scaleAnim = useState(new Animated.Value(1))[0];
     const modalBackgroundColor = useThemeColor({ light: '#fff', dark: '#1c1c1e' }, 'background');
+    const iconColor = useThemeColor({ light: '#11181C', dark: '#ECEDEE' }, 'text');
 
     const filteredCredentials = (selectedTag
         ? credentials.filtered('ANY tags._id == $0', selectedTag)
@@ -134,7 +134,7 @@ const Index = () => {
     }, [tagModalVisible]);
 
     return (
-        <KeyboardAvoidingProvider>
+        <>
             {/* Create new credential BottomSheet */}
             <BottomSheet
                 heightPrecentile={0.55}
@@ -270,7 +270,7 @@ const Index = () => {
                 <View style={styles.header}>
                     <View style={{ flexDirection: 'row', gap: 20, alignItems: 'center' }}>
                         <Link href="/settings" asChild>
-                            <Octicons name='gear' size={28} />
+                            <Octicons name='gear' size={28} color={iconColor} />
                         </Link>
                         <ThemedText type="title">YouVault</ThemedText>
                     </View>
@@ -322,7 +322,7 @@ const Index = () => {
                     </View>
 
                     <TouchableOpacity onPress={() => setShowArchived(!showArchived)}>
-                        <Octicons name={showArchived ? 'chevron-left' : 'archive'} size={24} />
+                        <Octicons name={showArchived ? 'chevron-left' : 'archive'} size={24} color={iconColor} />
                     </TouchableOpacity>
                 </View>
 
@@ -396,7 +396,7 @@ const Index = () => {
                             <ThemedText style={styles.modalText}>
                                 {editingTag ? `Edit ${editingTag.name}` : 'What action would you like to perform?'}
                             </ThemedText>
-                            <Octicons name='x' size={22} />
+                            <Octicons name='x' size={22} color={iconColor} />
                         </TouchableOpacity>
                         <View style={{ flexDirection: 'row', gap: 10 }}>
                             <TouchableOpacity
@@ -431,7 +431,7 @@ const Index = () => {
                     </Animated.View>
                 </View>
             </Modal>
-        </KeyboardAvoidingProvider>
+        </>
     );
 };
 

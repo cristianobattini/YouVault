@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Switch,
@@ -11,6 +13,7 @@ import {
 } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { useThemeColor } from '@/hooks/useThemeColor';
 import { Octicons } from '@expo/vector-icons';
 import { useNavigation } from 'expo-router';
 import { useRealm } from '@realm/react';
@@ -22,6 +25,7 @@ import { BiometricService } from '@/services/biometricService';
 const Settings = () => {
     const navigation = useNavigation();
     const realm = useRealm();
+    const iconColor = useThemeColor({ light: '#11181C', dark: '#ECEDEE' }, 'text');
 
     // ── Biometric ──────────────────────────────────────────────────────────────
     const [biometricSupported, setBiometricSupported] = useState(false);
@@ -132,13 +136,17 @@ const Settings = () => {
             <View style={styles.header}>
                 <View style={{ flexDirection: 'row', gap: 20, alignItems: 'center' }}>
                     <TouchableOpacity onPress={() => navigation.goBack()}>
-                        <Octicons size={28} name='chevron-left' />
+                        <Octicons size={28} name='chevron-left' color={iconColor} />
                     </TouchableOpacity>
                     <ThemedText type='title'>Settings</ThemedText>
                 </View>
             </View>
 
-            <ScrollView style={styles.contentContainer} contentContainerStyle={{ paddingBottom: 0 }}>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={{ flex: 1 }}
+            >
+        <ScrollView style={styles.contentContainer} contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
 
                 {/* ── Security ──────────────────────────────────────────── */}
                 <View style={styles.section}>
@@ -240,6 +248,7 @@ const Settings = () => {
                 </View>
 
             </ScrollView>
+            </KeyboardAvoidingView>
         </ThemedView>
     );
 };

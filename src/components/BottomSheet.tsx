@@ -1,4 +1,3 @@
-import useKeyboardAvoiding from '@/hooks/useKeyboardAvoiding';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { FontAwesome } from '@expo/vector-icons';
 import React, { useState, useEffect, useRef } from 'react';
@@ -10,7 +9,8 @@ import {
   TouchableOpacity,
   Platform,
   Dimensions,
-  Keyboard
+  Keyboard,
+  KeyboardAvoidingView,
 } from 'react-native';
 
 interface BottomSheetProps {
@@ -22,27 +22,9 @@ interface BottomSheetProps {
 
 const BottomSheet = ({ visible, children, heightPrecentile, onRequestClose }: BottomSheetProps) => {
   const [animatedValue] = useState(new Animated.Value(0));
-  const { animatedTranslateY } = useKeyboardAvoiding();
   const backgroundColor = useThemeColor({ light: '#fff', dark: '#1c1c1e' }, 'background');
   const iconColor = useThemeColor({ light: '#000', dark: '#ECEDEE' }, 'text');
   const sheetHeight = useRef(Dimensions.get('window').height * heightPrecentile);
-  const isKeyboardVisible = useRef(false);
-
-  useEffect(() => {
-    const keyboardDidShowListener = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      () => { isKeyboardVisible.current = true; }
-    );
-    const keyboardDidHideListener = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => { isKeyboardVisible.current = false; }
-    );
-
-    return () => {
-      keyboardDidShowListener.remove();
-      keyboardDidHideListener.remove();
-    };
-  }, []);
 
   useEffect(() => {
     Animated.timing(animatedValue, {
@@ -57,41 +39,24 @@ const BottomSheet = ({ visible, children, heightPrecentile, onRequestClose }: Bo
     outputRange: [sheetHeight.current, 0],
   });
 
-  const combinedTranslateY = Animated.add(
-    translateY,
-    Animated.multiply(
-      animatedTranslateY,
-      animatedValue.interpolate({
-        inputRange: [0.9, 1],
-        outputRange: [0, isKeyboardVisible.current ? 1 : 0],
-        extrapolate: 'clamp',
-      })
-    )
-  );
-
   return (
-    <Modal
-      visible={visible}
-      transparent={true}
-      animationType="none"
-    >
-      <TouchableOpacity
-        activeOpacity={1}
-        style={styles.overlay}
-      >
-        <View style={styles.modalContainer}>
+    <Modal visible={visible} transparent={true} animationType="none">
+      <TouchableOpacity activeOpacity={1} style={styles.overlay} onPress={Keyboard.dismiss}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalContainer}
+        >
           <Animated.View
             style={[
               styles.modalForm,
               {
-                transform: [{ translateY: combinedTranslateY }],
+                transform: [{ translateY }],
                 height: sheetHeight.current,
                 backgroundColor,
-              }
+              },
             ]}
             onLayout={(e) => {
-              const { height } = e.nativeEvent.layout;
-              sheetHeight.current = height;
+              sheetHeight.current = e.nativeEvent.layout.height;
             }}
           >
             <TouchableOpacity onPress={onRequestClose}>
@@ -103,7 +68,7 @@ const BottomSheet = ({ visible, children, heightPrecentile, onRequestClose }: Bo
             </TouchableOpacity>
             {children}
           </Animated.View>
-        </View>
+        </KeyboardAvoidingView>
       </TouchableOpacity>
     </Modal>
   );

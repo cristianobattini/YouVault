@@ -1,7 +1,7 @@
 import { useQuery, useRealm } from '@realm/react';
 import { BSON, List } from 'realm';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
-import { View, StyleSheet, TouchableOpacity, TextInput, Linking, Clipboard, Text, FlatList } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, TextInput, Linking, Clipboard, Text, FlatList, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Credential } from '@/models/Credential';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -11,7 +11,6 @@ import { useThemeColor } from '@/hooks/useThemeColor';
 import BottomSheet from '@/components/BottomSheet';
 import Input from '@/components/Input';
 import { useForm, Controller } from 'react-hook-form';
-import { KeyboardAvoidingProvider } from '@/components/store/KeyboardAvoidingProvider';
 import { Button, Dialog, Portal, Snackbar } from 'react-native-paper';
 import TagsPicker from '@/components/TagsPicker';
 import { IconName } from '@/components/IconPicker';
@@ -33,6 +32,7 @@ export default function CredentialDetail() {
 
     const tags: List<Tag> = useQuery(Tag) as unknown as List<Tag>;
     const textColor = useThemeColor({ light: '#11181C', dark: '#ECEDEE' }, 'text');
+    const iconColor = textColor;
 
     const navigation = useNavigation();
 
@@ -119,14 +119,14 @@ export default function CredentialDetail() {
     };
 
     return (
-        <KeyboardAvoidingProvider>
+        <>
             <ThemedView style={styles.container}>
                 <View style={styles.header}>
                     <View style={{ flexDirection: 'row', gap: 20, alignItems: 'center' }}>
                         <TouchableOpacity onPress={() => {
                             navigation.dispatch({ type: 'POP_TO_TOP' });
                         }}>
-                            <Octicons size={28} name='chevron-left' />
+                            <Octicons size={28} name='chevron-left' color={iconColor} />
                         </TouchableOpacity>
                         <ThemedText type="title">{credential.title}</ThemedText>
                     </View>
@@ -136,18 +136,19 @@ export default function CredentialDetail() {
                             <Octicons
                                 name={credential.isFavorite ? 'star-fill' : 'star'}
                                 size={24}
-                                color={credential.isFavorite ? '#FFD700' : undefined}
+                                color={credential.isFavorite ? '#FFD700' : iconColor}
                             />
                         </TouchableOpacity>
 
                         <TouchableOpacity onPress={() => setShowEditSheet(true)}>
-                            <Octicons name="pencil" size={24} />
+                            <Octicons name="pencil" size={24} color={iconColor} />
                         </TouchableOpacity>
 
                         <TouchableOpacity onPress={toggleArchive}>
                             <Octicons
                                 name={!credential.isArchived ? 'archive' : 'chevron-left'}
                                 size={24}
+                                color={iconColor}
                             />
                         </TouchableOpacity>
                     </View>
@@ -184,6 +185,8 @@ export default function CredentialDetail() {
                         )}
                 </View>
 
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+                <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
                 <View style={styles.detailSection}>
                     <DetailRow
                         icon="person"
@@ -215,7 +218,7 @@ export default function CredentialDetail() {
                     <View style={{ marginTop: 10 }}>
                         <View style={{ marginBottom: 10, flexDirection: 'row', width: '100%', justifyContent: 'space-between' }}>
                             <View style={styles.title}>
-                                <Octicons name={'note'} size={26} style={styles.rowIcon} />
+                                <Octicons name={'note'} size={26} style={styles.rowIcon} color={iconColor} />
                                 <ThemedText style={{ fontSize: 22 }}>{'Notes'}</ThemedText>
                             </View>
                             {notes != '' && <TouchableOpacity onPress={handleSaveNotes}>
@@ -245,6 +248,8 @@ export default function CredentialDetail() {
                         </ThemedText>
                     </View>
                 </View>
+                </ScrollView>
+                </KeyboardAvoidingView>
 
                 {/* Edit Credential Bottom Sheet */}
                 <BottomSheet
@@ -383,7 +388,7 @@ export default function CredentialDetail() {
             >
                 Notes saved.
             </Snackbar>
-        </KeyboardAvoidingProvider>
+        </>
     );
 }
 
@@ -399,23 +404,26 @@ const DetailRow = ({
     value: string;
     onPress?: () => void;
     actionIcon?: string;
-}) => (
-    <View style={styles.detailRow}>
-        <View style={styles.title}>
-            <Octicons name={icon as any} size={26} style={styles.rowIcon} />
-            <ThemedText style={{ fontSize: 22 }}>{label}</ThemedText>
-        </View>
+}) => {
+    const iconColor = useThemeColor({ light: '#11181C', dark: '#ECEDEE' }, 'text');
+    return (
+        <View style={styles.detailRow}>
+            <View style={styles.title}>
+                <Octicons name={icon as any} size={26} style={styles.rowIcon} color={iconColor} />
+                <ThemedText style={{ fontSize: 22 }}>{label}</ThemedText>
+            </View>
 
-        <TouchableOpacity
-            style={styles.content}
-            onPress={onPress}
-            disabled={!onPress}
-        >
-            <ThemedText type={label == 'URL' ? 'link' : 'default'} style={styles.rowValue}>{value}</ThemedText>
-            {actionIcon && <Octicons name={actionIcon as any} size={22} />}
-        </TouchableOpacity>
-    </View>
-);
+            <TouchableOpacity
+                style={styles.content}
+                onPress={onPress}
+                disabled={!onPress}
+            >
+                <ThemedText type={label == 'URL' ? 'link' : 'default'} style={styles.rowValue}>{value}</ThemedText>
+                {actionIcon && <Octicons name={actionIcon as any} size={22} color={iconColor} />}
+            </TouchableOpacity>
+        </View>
+    );
+};
 
 const styles = StyleSheet.create({
     container: {
